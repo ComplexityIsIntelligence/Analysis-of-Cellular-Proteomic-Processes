@@ -1,0 +1,999 @@
+---
+title: "Analysis of Cellular Proteomic Processes"
+date: "December 8, 2022"
+subtitle: "Keerat Gill, Michelle Wang, Kefira Wang, Ali Hafeez"
+output: 
+  beamer_presentation:
+    theme: Hannover
+    colortheme: beaver
+    fonttheme: structureitalicserif
+    slide_level: 2
+classoption: aspectratio=169
+fontsize: 9pt
+urlcolor: blue
+---
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# echo=FALSE will stop the code chunk from appearing in the knit document
+# warning=FALSE and message=FALSE will stop R messages from appearing in the knit document
+library(tidyverse)
+```
+
+
+## Introduction
+
+- The data is based on Flow Cytometry for single-cell analysis and Mass Spectrometry for measurement of cellular proteomic processes.\
+- Measures 22 AP-1 transcription factors and 4 phenotype proteins.\
+What is *"good"* cellular homeostasis? **And can bad proteins become good?**\
+
+\vspace{0.5cm}
+
+Our main research questions are:\
+1. Can we predict cellular phenotypical outcomes from transcription factors?\
+2. Do the phenotype levels change over time in different drug conditions?\
+3. What is the relationship between different proteins at a fixed time?\
+
+\vspace{0.5cm}
+
+### Statistical Methods
+- We first omitted all NA values to make sure our data was complete.\
+- We designated each phenotype a HIGH or LOW classification depending on if the recorded value was higher than the mean.\
+- Using the HIGH/LOW designation, we designated each observation to be melanocytic or undifferentiated.\
+
+## AXL Classification Tree 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+big_data <- read_csv("STA130Project.csv") #uploading the data
+clean_data <- na.omit(big_data)
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+clean_data_class <- clean_data %>% mutate(NGFR_class = ifelse(NGFR >= mean(NGFR), 'HIGH', 'LOW'), AXL_class = ifelse(AXL >= mean(AXL), 'HIGH', 'LOW'), Sox10_class = ifelse(Sox10 >= mean(Sox10), 'HIGH', 'LOW'), MiTFg_class = ifelse(MiTFg >= mean(MiTFg), 'HIGH', 'LOW'))
+#glimpse(clean_data_class)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+clean_data_class_only_TFs <- clean_data_class %>% select(-timepoint_id, -Timepoint, -drug_id, -Drugs, -dose_id, -Doses, -Rep)
+#glimpse(clean_data_class_only_TFs)
+TFs <- clean_data_class_only_TFs %>% select(-MiTFg, -MiTFg_class, -AXL, -AXL_class, -NGFR, -NGFR_class, -Sox10, -Sox10_class)
+# TFs_names: Phospho_c_Fos + Phospho_c_Jun + Phospho_ATF2 + Phospho_Fra1 + c_Fos + c_Jun + Fra1 + JunD + ATF2 + JunB + Fra2 + ATF4 + Phospho_ATF4 + Phospho_Erk1 + Phospho_ATF1 + ATF6 + Phospho_S6 + ATF3 + ATF5 + ATF6 + Phospho_S6 + ATF3 + ATF5 + Phospho_p38 + Ki_67 + NF_kappaB
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=6, fig.align='center'}
+library(rpart)
+library(partykit)
+AXL_tree <- rpart(AXL_class ~ Phospho_c_Fos + Phospho_c_Jun + Phospho_ATF2 + Phospho_Fra1 + c_Fos + c_Jun + Fra1 + JunD + ATF2 + JunB + Fra2 + ATF4 + Phospho_ATF4 + Phospho_Erk1 + Phospho_ATF1 + ATF6 + Phospho_S6 + ATF3 + ATF5 + ATF6 + Phospho_S6 + ATF3 + ATF5 + Phospho_p38 + Ki_67 + NF_kappaB, data = clean_data_class_only_TFs)
+plot(as.party(AXL_tree), type='simple', gp=gpar(cex = 0.6), main = 'Classification Tree to Determine AXL Class')
+```
+
+## NGFR Classification Tree
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=6, fig.align='center'}
+NGFR_tree <- rpart(NGFR_class ~ Phospho_c_Fos + Phospho_c_Jun + Phospho_ATF2 + Phospho_Fra1 + c_Fos + c_Jun + Fra1 + JunD + ATF2 + JunB + Fra2 + ATF4 + Phospho_ATF4 + Phospho_Erk1 + Phospho_ATF1 + ATF6 + Phospho_S6 + ATF3 + ATF5 + ATF6 + Phospho_S6 + ATF3 + ATF5 + Phospho_p38 + Ki_67 + NF_kappaB, data = clean_data_class_only_TFs)
+plot(as.party(NGFR_tree), type='simple', main='Classification Tree to Determine NGFR Class', gp=gpar(cex=0.4))
+```
+
+## MiTFg Classification Tree
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=6, fig.align='center'}
+MiTFg_tree <- rpart(MiTFg_class ~ Phospho_c_Fos + Phospho_c_Jun + Phospho_ATF2 + Phospho_Fra1 + c_Fos + c_Jun + Fra1 + JunD + ATF2 + JunB + Fra2 + ATF4 + Phospho_ATF4 + Phospho_Erk1 + Phospho_ATF1 + ATF6 + Phospho_S6 + ATF3 + ATF5 + ATF6 + Phospho_S6 + ATF3 + ATF5 + Phospho_p38 + Ki_67 + NF_kappaB, data = clean_data_class_only_TFs)
+plot(as.party(MiTFg_tree), type='simple', main = 'Classification Tree to Determine MiTFg Class', gp=gpar(cex=0.6))
+```
+
+## Sox10 Classification Tree
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=6, fig.align='center'}
+Sox10_tree <- rpart(Sox10_class ~ Phospho_c_Fos + Phospho_c_Jun + Phospho_ATF2 + Phospho_Fra1 + c_Fos + c_Jun + Fra1 + JunD + ATF2 + JunB + Fra2 + ATF4 + Phospho_ATF4 + Phospho_Erk1 + Phospho_ATF1 + ATF6 + Phospho_S6 + ATF3 + ATF5 + ATF6 + Phospho_S6 + ATF3 + ATF5 + Phospho_p38 + Ki_67 + NF_kappaB, data = clean_data_class_only_TFs)
+plot(as.party(Sox10_tree), type='simple', main='Classification Tree to Determine Sox10 Class', gp=gpar(cex=0.6))
+```
+
+## Classification Tree Findings
+
+### Findings from Classification Trees - Cancerous Cells (Melanocytic)
+AXL: LOW\
+- Phospho_Fra1 < 2.834\
+- Phospho_Fra1 >= 2.834, Fra2 < 2.722 AND Phospho_Erk1 >= 3.361\
+- Phospho_Fra1 >= 2.834, Fra2 < 2.722, Phospho_Erk1 < 3.361 AND Fra2 < 2.533\
+NGFR: HIGH\
+- Phospho_ATF2 < 2.362 AND ATF6 >= 2.749 AND Ki_67 < 3.739\
+- Phospho_ATF2 >= 2.362 AND ATF6 >= 2.795\
+- Phospho_ATF2 >= 2.362 AND ATF6 < 2.795 AND Ki_67 < 3.68 AND c_Fos >= 2.417\
+MiTFg: HIGH\
+- ATF6 >= 2.736 AND ATF6 >= 2.833\
+- ATF6 >= 2.736 AND ATF6 < 2.833 AND Fra2 < 2.747\
+- ATF6 >= 2.736 AND ATF6 < 2.833 AND Fra2 >= 2.747 AND ATF4 >= 2.795\
+SOX10: LOW\
+- Phospho_S6 >= 3.331 AND ATF4 < 2.767\
+- Phospho_S6 >= 3.331, ATF4 >= 2.767, ATF3 < 3.53 AND Phospho_Erk1 >= 3.337\
+
+---
+
+### Findings from Classification Trees - Non-Cancerous Cells (Undifferentiated)
+
+AXL: HIGH\
+- Phospho_Fra1 >= 2.834 AND Fra2 >= 2.722\
+- Phospho_Fra1 >= 2.834, Fra2 < 2.722, Phospho_Erk1 < 3.361 AND Fra2 >= 2.533\
+NGFR: LOW\
+- Phospho_ATF2 < 2.362 AND ATF6 < 2.749\
+- Phospho_ATF2 < 2.362 AND ATF6 >= 2.749 AND Ki_67 >= 3.739\
+- Phospho_ATF2 >= 2.362 AND ATF6 < 2.795 AND Ki_67 >= 3.68\
+- Phospho_ATF2 >= 2.362 AND ATF6 < 2.795 AND Ki_67 < 3.68 AND c_Fos < 2.417\
+MiTFg: LOW\
+- ATF6 < 2.736\
+- ATF6 >= 2.736 AND ATF6 < 2.833 AND Fra2 >= 2.747 AND ATF4 < 2.795\
+SOX10: LOW\
+- Phospho_S6 >= 3.331 AND ATF4 < 2.767\
+- Phospho_S6 >= 3.331, ATF4 >= 2.767, ATF3 < 3.53, Phospho_Erk1 >= 3.337\
+
+
+## Turning Bad Cells ino Good Cells
+
+**Do the phenotype levels change over time in different drug conditions?**\
+
+\vspace{0.5cm}
+
+- We first plotted the average level of phenotypes in melanocytic cells over time, grouped by drug type, to see if there was a noticable difference to justify a two-sample hypothesis test.\
+- NGFR, AXL and MiTFg had noticable  linear trends in their means overtime.\
+- Sox10 had an abnormal jump at the 2h timepoint for both drugs.\
+- This was taken into consideration when conducting the two-sample test.\
+- The following are the average means and p-values for the change in phenotype level between the 0.5h and 24h timepoint.\
+- Alpha-significance level is 0.05, as per scientific convention.
+
+\vspace{0.5cm}
+
+*NULL HYPOTHESIS: There is no change in protein level over time.*
+
+---
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#creating new variables NGFR_class, AXL_class, Sox10_class and MiTFg_class to later use to create cancerous and non_cancerous subsets.
+
+cleandata_class <- clean_data %>% mutate(NGFR_class = ifelse(NGFR >= mean(NGFR), 'HIGH', 'LOW'), 
+                     AXL_class = ifelse(AXL >= mean(AXL), 'HIGH', 'LOW'), 
+                     Sox10_class = ifelse(Sox10 >= mean(Sox10),'HIGH', 'LOW'),
+                     MiTFg_class = ifelse(MiTFg >= mean(MiTFg), 'HIGH', 'LOW'))
+
+cancerous <- cleandata_class %>% filter(AXL_class == 'LOW' & Sox10_class == 'LOW' & NGFR_class == 'HIGH' & MiTFg_class == 'HIGH')
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,}
+
+#turning Timepoint into a numerical data by creating new variable, orderedtime.
+#SPECIFICALLY ONLY FOR CANCEROUS CELLS
+
+groupcancer_time <- cancerous %>% mutate(orderedtime = case_when(
+                                                         Timepoint == '0.5 h' ~ 0.5, 
+                                                         Timepoint == '2 h' ~ 2,
+                                                         Timepoint == '6 h' ~ 6,
+                                                         Timepoint == '15 h' ~ 15,
+                                                         Timepoint == '24 h' ~ 24))
+
+groupcancer <- groupcancer_time %>% select(Drugs, NGFR, AXL, Sox10, MiTFg, NGFR_class, AXL_class, Sox10_class, MiTFg_class, orderedtime)
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,}
+
+##Creating sub-data sets within the cancerous cells that separate cells based on which drug they are using and their timepoint (time of recorded death).
+
+#Notation; C - cancerous, V - Vem drug, VT - Vem+Tram drug. '___time' - indicates the time. 
+
+#This one has only VEM drugs 
+
+CVpointfivetime <- groupcancer %>% filter(Drugs == 'Vem' & orderedtime == 0.5)
+
+CVtwotime <- groupcancer %>% filter(Drugs == 'Vem' & orderedtime == 2)
+
+CVsixtime <- groupcancer %>% filter(Drugs == 'Vem' & orderedtime == 6)
+
+CVfifteentime <- groupcancer %>% filter(Drugs == 'Vem' & orderedtime == 15)
+
+CVfulltime <- groupcancer %>% filter(Drugs == 'Vem' & orderedtime == 24)
+
+##This one only has Vem+Tram drugs
+
+CVTpointfivetime <- groupcancer %>% filter(Drugs == 'Vem+Tram' & orderedtime == 0.5)
+
+CVTtwotime <- groupcancer %>% filter(Drugs == 'Vem+Tram' & orderedtime == 2)
+
+CVTsixtime <- groupcancer %>% filter(Drugs == 'Vem+Tram' & orderedtime == 6)
+
+CVTfifteentime <- groupcancer %>% filter(Drugs == 'Vem+Tram' & orderedtime == 15)
+
+CVTfulltime <- groupcancer %>% filter(Drugs == 'Vem+Tram' & orderedtime == 24)
+
+```
+
+## AXL Levels Change Over Time in VEM and VEM+TRAM Drug
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=2.5}
+
+#Creating subset of melanocytic cells, only looking at the average level of AXL at each time point. Specifically for VEM drug.
+
+AXLVemC <- groupcancer %>% filter(Drugs == 'Vem') %>% select(AXL, orderedtime) %>% group_by(orderedtime) %>% summarize(n=n(), mean(AXL)) 
+
+AXLtimeCV <- c(0.5, 2, 6, 15, 24)
+AXLmeanCV <- c(3.366909, 3.333558, 3.335184, 3.318167, 3.301639) #Taken from AXLVemC
+
+AXLmean_df_CV <- data.frame(AXLtimeCV, AXLmeanCV)
+
+ggplot(AXLmean_df_CV, aes(x=AXLtimeCV, y=AXLmeanCV)) + geom_point() + labs(title='AXL in VEM drug', x='time', y= 'AXL level')
+
+#cor(AXLmean_df_CV$AXLtimeCV, AXLmean_df_CV$AXLmeanCV)
+
+#Do the same thing, with the VEM+TRAM drug
+
+AXLVTramC <- groupcancer %>% filter(Drugs == 'Vem+Tram') %>% select(AXL, orderedtime) %>% group_by(orderedtime) %>% summarize(n=n(), mean(AXL)) 
+
+
+AXLtimeCVT <- c(0.5, 2, 6, 15, 24)
+AXLmeanCVT <- c(3.357275, 3.337623, 3.327603,	3.308636,	3.316986) #Taken from AXLVTramC
+
+AXLmean_df_CVT <- data.frame(AXLtimeCVT, AXLmeanCVT) 
+
+ggplot(AXLmean_df_CVT, aes(x=AXLtimeCVT, y=AXLmeanCVT)) + geom_point() + labs(title='AXL in V+T drug', x='time', y= 'AXL level')
+
+#cor(AXLmean_df_CVT$AXLtimeCVT, AXLmean_df_CVT$AXLmeanCVT)
+
+```
+
+## Sox10 Level Change Over Time in VEM and VEM+TRAM Drug
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=2.5}
+
+#Creating subset of melanocytic cells, only looking at the average level of Sox10 at each time point. Specifically for VEM drug.
+
+Sox10VemC <- groupcancer %>% filter(Drugs == 'Vem') %>% select(Sox10, orderedtime) %>% group_by(orderedtime) %>% summarize(n=n(), mean(Sox10)) 
+
+
+Sox10timeCV <- c(0.5, 2, 6, 15, 24)
+Sox10meanCV <- c(3.546383, 3.406140, 3.543998, 3.543643, 3.537207)
+
+Sox10mean_df_CV <- data.frame(Sox10timeCV, Sox10meanCV)
+
+
+ggplot(Sox10mean_df_CV, aes(x=Sox10timeCV, y=Sox10meanCV)) + geom_point() + labs(title='Sox10 in Vem drug', x='time', y= 'Sox10 level')
+
+#cor(Sox10mean_df_CV$Sox10timeCV, Sox10mean_df_CV$Sox10meanCV)
+
+#Same thing, with VEM+TRAM Drug
+
+Sox10VTramC <- groupcancer %>% filter(Drugs == 'Vem+Tram') %>% select(Sox10, orderedtime) %>% group_by(orderedtime) %>% summarize(n=n(), mean(Sox10)) 
+
+Sox10timeCVT <- c(0.5, 2, 6, 15, 24)
+Sox10meanCVT <- c(3.548716, 3.435378, 3.544271, 3.547409, 3.539588)	
+
+Sox10mean_df_CVT <- data.frame(Sox10timeCVT, Sox10meanCVT)
+
+ggplot(Sox10mean_df_CVT, aes(x=Sox10timeCVT, y=Sox10meanCVT)) + geom_point() + labs(title= 'Sox10 in V+T drug', x='time', y= 'Sox10 level')
+
+#cor(Sox10mean_df_CVT$Sox10timeCVT, Sox10mean_df_CVT$Sox10meanCVT)
+
+```
+
+
+## NGFR Level Change Over Time in VEM and VEM+TRAM Drug
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=2.5}
+
+#Creating subset of melanocytic cells, only looking at the average level of NGFR at each time point. Specifically for VEM drug.
+
+NGFRVemC <- groupcancer %>% filter(Drugs == 'Vem') %>% select(NGFR, orderedtime) %>% group_by(orderedtime) %>% summarize(n=n(), mean(NGFR)) 
+
+
+NGFRtimeCV <- c(0.5, 2, 6, 15, 24)
+NGFRmeanCV <- c(3.105181, 3.122855, 3.121872, 3.123155, 3.131846)	#Taken from NGFRVemC
+  
+NGFRmean_df_CV <- data.frame(NGFRtimeCV, NGFRmeanCV)
+
+ggplot(NGFRmean_df_CV, aes(x=NGFRtimeCV, y=NGFRmeanCV)) + geom_point() + labs(title='NGFR in Vem drug', x='time', y= 'NGFR level')
+
+#cor(NGFRmean_df_CV$NGFRtimeCV, NGFRmean_df_CV$NGFRmeanCV)
+
+#Do the same thing with VEM+TRAM Drug
+
+NGFRVTramC <- groupcancer %>% filter(Drugs == 'Vem+Tram') %>% select(NGFR, orderedtime) %>% group_by(orderedtime) %>% summarize(n=n(), mean(NGFR)) 
+
+NGFRtimeCVT <- c(0.5, 2, 6, 15, 24)
+NGFRmeanCVT <- c(3.111332, 3.122884,	3.117180, 3.125491, 3.145561) #Taken from NGFRVTramC
+  
+NGFRmean_df_CVT <- data.frame(NGFRtimeCVT, NGFRmeanCVT)
+
+
+ggplot(NGFRmean_df_CVT, aes(x=NGFRtimeCVT, y=NGFRmeanCVT)) + geom_point() + labs(title='NGFR in V+T drug', x='time', y= 'NGFR level')
+
+#cor(NGFRmean_df_CVT$NGFRtimeCVT, NGFRmean_df_CVT$NGFRmeanCVT)
+
+
+```
+
+## MiTFg Level Change Over Time in VEM and VEM+TRAM Drug
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=2, fig.width=2.5}
+
+#Creating subset of melanocytic cells, only looking at the average level of MiTFg at each time point. Specifically for VEM drug.
+
+MiTFgVemC <- groupcancer %>% filter(Drugs == 'Vem') %>% select(MiTFg, orderedtime) %>% group_by(orderedtime) %>% summarize(n=n(), mean(MiTFg)) 
+
+MiTFgtimeCV <- c(0.5, 2, 6, 15, 24)
+MiTFgmeanCV <- c(3.105181, 3.122855, 3.121872, 3.123155, 3.131846)	#Taken from MiTFgVemC
+  
+MiTFgmean_df_CV <- data.frame(MiTFgtimeCV, MiTFgmeanCV)
+
+ggplot(MiTFgmean_df_CV, aes(x=MiTFgtimeCV, y=MiTFgmeanCV)) + geom_point() + labs(title='MiTFg in Vem drug', x='time', y= 'MiTFg level')
+
+#cor(MiTFgmean_df_CV$MiTFgtimeCV, MiTFgmean_df_CV$MiTFgmeanCV)
+
+#Do the same for VEM+TRAM DRUG
+
+MiTFgVTramC <- groupcancer %>% filter(Drugs == 'Vem+Tram') %>% select(MiTFg, orderedtime) %>% group_by(orderedtime) %>% summarize(n=n(), mean(MiTFg)) 
+
+MiTFgtimeCVT <- c(0.5, 2, 6, 15, 24)
+MiTFgmeanCVT <- c(3.835648,	3.832574, 3.803088,	3.784568,	3.782575) #TAken from MiTFgVTramC
+  
+MiTFgmean_df_CVT <- data.frame(MiTFgtimeCVT, MiTFgmeanCVT)
+
+ggplot(MiTFgmean_df_CVT, aes(x=MiTFgtimeCVT, y=MiTFgmeanCVT)) + geom_point() + labs(title='MiTFg in V+T drug', x='time', y= 'MiTFg level')
+
+#cor(MiTFgmean_df_CVT$MiTFgtimeCVT, MiTFgmean_df_CVT$MiTFgmeanCVT)
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#Two sample hypothesis testing AXL, VEM drug
+
+AXLstarttimeCV <- CVpointfivetime %>% select(AXL) #at 0.5 hours, #only 138 data points
+AXLfulltimeCV <- CVfulltime %>% select(AXL) #at 14 hours, has 5,000 data points
+
+n1 <- 138
+n2 <- 4000
+
+set.seed(523)
+N <- 1000; #how many times you run the code
+AXLsimulated_values <- 1:N
+
+for(i in 1:N){ #do 1000 'fake' observations
+  AXLshuffled_CV <- sample(c(AXLstarttimeCV$AXL, AXLfulltimeCV$AXL), size=n1+n2, replace=FALSE)
+  AXLsimvalue_C <- mean(AXLshuffled_CV[1:n1])-mean(AXLshuffled_CV[(n1+1):(n1+n2)])
+  AXLsimulated_values[i] <- as.numeric(AXLsimvalue_C)
+}
+
+simAXLCV <- tibble(AXLmean_diff = AXLsimulated_values)
+
+#simAXLCV %>% ggplot(aes(x=AXLmean_diff)) + geom_histogram(binwidth=0.001, color="black", fill="gray")
+
+AXLtest_stat <- 3.366909 - 3.301639
+
+AXL_moreextreme <- simAXLCV %>% filter(abs(AXLmean_diff) >= abs(AXLtest_stat)) %>% summarise(n()/100)
+
+AXL_p_CV <- as.numeric(AXL_moreextreme); #AXL_p_CV
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#Two sample hypothesis testing AXL, VEM+TRAM drug
+
+AXLstarttimeCVT <- CVTpointfivetime %>% select(AXL) #at 0.5 hours, #only 138 data points
+AXLfulltimeCVT <- CVTfulltime %>% select(AXL) #at 14 hours, has 5,000 data points
+
+n1 <- 195
+n2 <- 2194
+
+set.seed(523)
+N <- 1000; #how many times you run the code
+AXLsimulated_valuesCVT <- 1:N
+
+for(i in 1:N){ #do 1000 'fake' observations
+  AXLshuffled_CVT <- sample(c(AXLstarttimeCVT$AXL, AXLfulltimeCVT$AXL), size=n1+n2, replace=FALSE)
+  AXLsimvalue_CVT <- mean(AXLshuffled_CVT[1:n1])-mean(AXLshuffled_CVT[(n1+1):(n1+n2)])
+  AXLsimulated_valuesCVT[i] <- as.numeric(AXLsimvalue_CVT)
+}
+
+simAXLCVT <- tibble(AXLmean_diff_CVT = AXLsimulated_valuesCVT)
+
+#simAXLCVT %>% ggplot(aes(x=AXLmean_diff_CVT)) + geom_histogram(binwidth=0.001, color="black", fill="gray")
+
+AXLtest_stat_CVT <- 3.357275 - 3.316986
+
+AXL_moreextreme_CVT <- simAXLCVT %>% filter(abs(AXLmean_diff_CVT) >= abs(AXLtest_stat_CVT)) %>% summarise(n()/100)
+
+AXL_p_CVT <- as.numeric(AXL_moreextreme_CVT); #AXL_p_CVT
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#Two sample hypothesis testing SOX, VEM drug
+
+SOXstarttimeCV <- CVpointfivetime %>% select(Sox10) #at 0.5 hours, #only 138 data points
+SOXfulltimeCV <- CVfulltime %>% select(Sox10) #at 24 hours, has 5,000 data points
+
+n1 <- 135
+n2 <- 4000
+
+set.seed(523)
+N <- 1000; #how many times you run the code
+SOXsimulated_values_CV <- 1:N
+
+for(i in 1:N){ #do 1000 'fake' observations
+  SOXshuffled_CV <- sample(c(SOXstarttimeCV$Sox10, SOXfulltimeCV$Sox10), size=n1+n2, replace=FALSE)
+  SOXsimvalue_CV <- mean(SOXshuffled_CV[1:n1])-mean(SOXshuffled_CV[(n1+1):(n1+n2)])
+  SOXsimulated_values_CV[i] <- as.numeric(SOXsimvalue_CV)
+}
+
+simSOX <- tibble(SOXmean_diff = SOXsimulated_values_CV)
+
+#simSOX %>% ggplot(aes(x=SOXmean_diff)) + geom_histogram(binwidth=0.001, color="black", fill="gray")
+
+SOXtest_stat <- 3.546383 - 3.537207
+
+SOX_moreextreme <- simSOX %>% filter(abs(SOXmean_diff) >= abs(SOXtest_stat)) %>% summarise(n()/100)
+SOX_p_CV <- as.numeric(SOX_moreextreme)
+
+#SOX_p_CV
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#Two sample hypothesis testing SOX, VEM+TRAM drug
+
+SOXstarttimeCVT <- CVTpointfivetime %>% select(Sox10) #at 0.5 hours, #only 138 data points
+SOXfulltimeCVT <- CVTfulltime %>% select(Sox10) #at 24 hours, has 5,000 data points
+
+n1 <- 135
+n2 <- 2000
+
+set.seed(523)
+N <- 1000; #how many times you run the code
+SOXsimulated_values_CVT <- 1:N
+
+for(i in 1:N){ #do 1000 'fake' observations
+  SOXshuffled_CVT <- sample(c(SOXstarttimeCVT$Sox10, SOXfulltimeCVT$Sox10), size=n1+n2, replace=FALSE)
+  SOXsimvalue_CVT <- mean(SOXshuffled_CVT[1:n1])-mean(SOXshuffled_CVT[(n1+1):(n1+n2)])
+  SOXsimulated_values_CVT[i] <- as.numeric(SOXsimvalue_CVT)
+}
+
+simSOX_CVT <- tibble(SOXmean_diff_CVT = SOXsimulated_values_CVT)
+
+#simSOX_CVT %>% ggplot(aes(x=SOXmean_diff_CVT)) + geom_histogram(binwidth=0.001, color="black", fill="gray")
+
+SOXtest_stat_CVT <- 3.548716 - 3.539588
+
+SOX_moreextremeCVT <- simSOX_CVT %>% filter(abs(SOXmean_diff_CVT) >= abs(SOXtest_stat_CVT)) %>% summarise(n()/100)
+SOX_p_CVT <- as.numeric(SOX_moreextremeCVT); #SOX_p_CVT
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#Two sample hypothesis testing NGFR, VEM drug
+
+NGFRstarttimeCV <- CVpointfivetime %>% select(NGFR) #at 0.5 hours, #only 135 data points
+NGFRfulltimeCV <- CVfulltime %>% select(NGFR) #at 24 hours, has 5,000 data points
+
+n1 <- 135
+n2 <- 4000
+
+set.seed(523)
+N <- 1000; #how many times you run the code
+NGFRsimulated_values_CV <- 1:N
+
+for(i in 1:N){ #do 1000 'fake' observations
+  NGFRshuffled_CV <- sample(c(NGFRstarttimeCV$NGFR, NGFRfulltimeCV$NGFR), size=n1+n2, replace=FALSE)
+  NGFRsimvalue_CV <- mean(NGFRshuffled_CV[1:n1])-mean(NGFRshuffled_CV[(n1+1):(n1+n2)])
+  NGFRsimulated_values_CV[i] <- as.numeric(NGFRsimvalue_CV)
+}
+
+simNGFR <- tibble(NGFRmean_diff = NGFRsimulated_values_CV)
+
+#simNGFR %>% ggplot(aes(x=NGFRmean_diff)) + geom_histogram(binwidth=0.001, color="black", fill="gray")
+
+NGFRtest_stat <- 3.105181 - 3.131846
+
+NGFR_moreextreme <- simNGFR %>% filter(abs(NGFRmean_diff) >= abs(NGFRtest_stat)) %>% summarise(n()/100)
+NGFR_p_CV <- as.numeric(NGFR_moreextreme); #NGFR_p_CV
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#Two sample hypothesis testing NGFR, VEM+TRAM drug
+
+NGFRstarttimeCVT <- CVTpointfivetime %>% select(NGFR) #at 0.5 hours, #only 135 data points
+NGFRfulltimeCVT <- CVTfulltime %>% select(NGFR) #at 24 hours, has 5,000 data points
+
+n1 <- 195
+n2 <- 2194
+
+set.seed(523)
+N <- 1000; #how many times you run the code
+NGFRsimulated_values_CVT <- 1:N
+
+for(i in 1:N){ #do 1000 'fake' observations
+  NGFRshuffled_CVT <- sample(c(NGFRstarttimeCVT$NGFR, NGFRfulltimeCVT$NGFR), size=n1+n2, replace=FALSE)
+  NGFRsimvalue_CVT <- mean(NGFRshuffled_CVT[1:n1])-mean(NGFRshuffled_CVT[(n1+1):(n1+n2)])
+  NGFRsimulated_values_CVT[i] <- as.numeric(NGFRsimvalue_CVT)
+}
+
+simNGFR_CVT <- tibble(NGFRmean_diff_CVT = NGFRsimulated_values_CVT)
+
+#simNGFR_CVT %>% ggplot(aes(x=NGFRmean_diff_CVT)) + geom_histogram(binwidth=0.001, color="black", fill="gray")
+
+NGFRtest_stat_CVT <- 3.111332 - 3.145561
+
+NGFR_moreextreme_CVT <- simNGFR_CVT %>% filter(abs(NGFRmean_diff_CVT) >= abs(NGFRtest_stat_CVT)) %>% summarise(n()/100)
+NGFR_p_CVT <- as.numeric(NGFR_moreextreme_CVT); #NGFR_p_CVT
+
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#Two sample hypothesis testing MitFg, VEM drug
+
+MITFGstarttimeCV <- CVpointfivetime %>% select(MiTFg) #at 0.5 hours, #only 135 data points
+MITFGfulltimeCV <- CVfulltime %>% select(MiTFg) #at 24 hours, has 5,000 data points
+
+n1 <- 135
+n2 <- 4000
+
+set.seed(523)
+N <- 1000; #how many times you run the code
+MITFGsimulated_values_CV <- 1:N
+
+for(i in 1:N){ #do 1000 'fake' observations
+  MITFGshuffled_CV <- sample(c(MITFGstarttimeCV$MiTFg, MITFGfulltimeCV$MiTFg), size=n1+n2, replace=FALSE)
+  MITFGsimvalue_CV <- mean(MITFGshuffled_CV[1:n1])-mean(MITFGshuffled_CV[(n1+1):(n1+n2)])
+  MITFGsimulated_values_CV[i] <- as.numeric(MITFGsimvalue_CV)
+}
+
+simMiTFg <- tibble(MITFGmean_diff = MITFGsimulated_values_CV)
+
+#simMiTFg %>% ggplot(aes(x=MITFGmean_diff)) + geom_histogram(binwidth=0.001, color="black", fill="gray")
+
+MiTFgtest_stat <- 3.105181 - 3.131846
+
+MiTFg_moreextreme <- simMiTFg %>% filter(abs(MITFGmean_diff) >= abs(MiTFgtest_stat)) %>% summarise(n()/100)
+MiTFg_p_CV <- as.numeric(MiTFg_moreextreme); #MiTFg_p_CV
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+#Two sample hypothesis testing MitFg, VEM+TRAM drug
+
+MITFGstarttimeCVT <- CVTpointfivetime %>% select(MiTFg) #at 0.5 hours, #only 135 data points
+MITFGfulltimeCVT <- CVTfulltime %>% select(MiTFg) #at 24 hours, has 5,000 data points
+
+n1 <- 135
+n2 <- 2000
+
+set.seed(523)
+N <- 1000; #how many times you run the code
+MITFGsimulated_values_CVT <- 1:N
+
+for(i in 1:N){ #do 1000 'fake' observations
+  MITFGshuffled_CVT <- sample(c(MITFGstarttimeCVT$MiTFg, MITFGfulltimeCVT$MiTFg), size=n1+n2, replace=FALSE)
+  MITFGsimvalue_CVT <- mean(MITFGshuffled_CVT[1:n1])-mean(MITFGshuffled_CVT[(n1+1):(n1+n2)])
+  MITFGsimulated_values_CVT[i] <- as.numeric(MITFGsimvalue_CVT)
+}
+
+simMiTFgCVT <- tibble(MITFGmean_diff_CVT = MITFGsimulated_values_CVT)
+
+#simMiTFgCVT %>% ggplot(aes(x=MITFGmean_diff_CVT)) + geom_histogram(binwidth=0.001, color="black", fill="gray")
+
+MiTFgtest_stat_CVT <- 3.835648 - 3.782575
+
+MiTFg_moreextreme_CVT <- simMiTFgCVT %>% filter(abs(MITFGmean_diff_CVT) >= abs(MiTFgtest_stat_CVT)) %>% summarise(n()/100)
+MiTFg_p_CVT <- as.numeric(MiTFg_moreextreme_CVT); #MiTFg_p_CVT
+
+```
+
+## Resulting P-Values for Cancerous Cells
+
+### From the two-sample hypothesis tests, our main findigns were;
+
+- AXL_VEM drug → P-value was so small, it showed up as 0 on the code.\
+- AXL_VEM+TRAM drug → P-value was so small, it showed up as 0 on the code.\
+- NGFR_VEM drug → P-value was so small, it showed up as 0 on the code.\
+- NGFR_VEM+TRAM drug → P-value was so small, it showed up as 0 on the code.\
+- MiTFg_VEM drug → P-value was so small, it showed up as 0 on the code.\
+- MiTFg_VEM+TRAM drug → P-value was so small, it showed up as 0 on the code.\
+- Sox10 VEM drug → P-value was 0.74. Fail to reject the null hypothesis.\
+- Sox10 VEM+TRAM drug → P-value was 0.36. Fail to reject the null hypothesis.\
+
+## Correlation Estimation 
+
+**What is the relationship between different proteins at a fixed timepoint and environmental condition?**\
+- We wanted to investigate this as it is an essential component to understanding how phenotypes behave and what environmental conditions, such as other phenotypes, can affect their own phenotype level.\
+- If we find trends, we can use this to justify further scientific exploration into how phenotypes themselves can be used to reduce melanocytic cells.\
+
+---
+
+## Correlation Estimation
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+install.packages("cowplot")
+library("cowplot")
+
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3.1, fig.width=6}
+dataset_cancer<- read_csv("STA130Project.csv")
+dataset_cancer%>% na.omit() %>% arrange() -> dataset_cancer
+
+
+median_value_Sox10<-as.numeric(dataset_cancer%>%summarise(median(Sox10)))
+median_value_AXL<-as.numeric(dataset_cancer%>%summarise(median(AXL)))
+median_value_NGFR<-as.numeric(dataset_cancer%>%summarise(median(NGFR)))
+median_value_MiTFg<-as.numeric(dataset_cancer%>%summarise(median(MiTFg)))
+
+dataset_cancer %>% mutate(NumValue_Sox10=case_when(median_value_Sox10<Sox10~1,median_value_Sox10>=Sox10~0)) %>% mutate(NumValue_AXL=case_when(median_value_AXL<Sox10~1,median_value_AXL>=AXL~0))%>% mutate(NumValue_NGFR=case_when(median_value_NGFR<NGFR~1,median_value_NGFR>=NGFR~0))%>% mutate(NumValue_MiTFg=case_when(median_value_MiTFg<Sox10~1,median_value_MiTFg>=MiTFg~0))%>% mutate(Sum_of_Proteins=NumValue_MiTFg+NumValue_NGFR+NumValue_AXL+NumValue_Sox10)%>% mutate(Cancer_Binary_Evaluator=case_when(Sum_of_Proteins==1~"Undifferentiated",Sum_of_Proteins==3~"Neural crest-like or Transitory",Sum_of_Proteins==2~"Melanocytic")) %>% mutate(Cancer=case_when(Cancer_Binary_Evaluator=="Undifferentiated"~"Negative",Cancer_Binary_Evaluator=="Melanocytic"~"Positive")) %>% na.omit() ->dataset_cancer
+
+
+
+
+
+
+datapoint <- dataset_cancer %>% filter(Drugs=='Vem') %>% filter(Timepoint=='0.5 h')
+
+
+
+
+
+cor(datapoint$Sox10, datapoint$AXL)^2
+cor(datapoint$MiTFg, datapoint$NGFR)^2
+
+cor(datapoint$AXL, datapoint$NGFR)^2
+cor(datapoint$AXL, datapoint$MiTFg)^2
+
+
+cor(datapoint$Sox10, datapoint$NGFR)^2
+cor(datapoint$MiTFg, datapoint$Sox10)^2
+
+
+
+a<-datapoint %>%
+ggplot(aes(x=AXL, y=Sox10)) +
+geom_point(aes(color=Cancer)) + theme_light() +
+labs(title="AXL vs Sox10",
+x="AXL",
+y="Sox10")  + theme(
+  panel.background = element_rect(fill = "lightblue",
+                                colour = "lightblue",
+                                size = 0.5, linetype = "solid"),
+  panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                colour = "white"), 
+  panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                colour = "white")
+  ) + theme(plot.background = element_rect(fill = "purple"))
+
+
+b<-datapoint %>%
+ggplot(aes(x=NGFR, y=Sox10)) +
+geom_point(aes(color=Cancer)) + theme_light() +
+labs(title="NGFR vs Sox10",
+x="AXL",
+y="Sox10")  + theme(
+  panel.background = element_rect(fill = "lightblue",
+                                colour = "lightblue",
+                                size = 0.5, linetype = "solid"),
+  panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                colour = "white"), 
+  panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                colour = "white")
+  ) + theme(plot.background = element_rect(fill = "purple"))
+
+
+c<-datapoint %>%
+ggplot(aes(x=MiTFg, y=Sox10)) +
+geom_point(aes(color=Cancer)) + theme_light() +
+labs(title="MitFg vs Sox10",
+x="AXL",
+y="Sox10")  + theme(
+  panel.background = element_rect(fill = "lightblue",
+                                colour = "lightblue",
+                                size = 0.5, linetype = "solid"),
+  panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                colour = "white"), 
+  panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                colour = "white")
+  ) + theme(plot.background = element_rect(fill = "purple"))
+
+
+
+
+d<-datapoint %>%
+ggplot(aes(x=NGFR, y=MiTFg)) +
+geom_point(aes(color=Cancer)) + theme_light() +
+labs(title="NGFR vs MiTFg",
+x="NGFR",
+y="MiTFg")  + theme(
+  panel.background = element_rect(fill = "lightblue",
+                                colour = "lightblue",
+                                size = 0.5, linetype = "solid"),
+  panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                colour = "white"), 
+  panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                colour = "white")
+  ) + theme(plot.background = element_rect(fill = "purple"))
+
+
+e<-datapoint %>%
+ggplot(aes(x=AXL, y=MiTFg)) +
+geom_point(aes(color=Cancer)) + theme_light() +
+labs(title="AXL vs MiTFg",
+x="AXL",
+y="Sox10")  + theme(
+  panel.background = element_rect(fill = "lightblue",
+                                colour = "lightblue",
+                                size = 0.5, linetype = "solid"),
+  panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                colour = "white"), 
+  panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                colour = "white")
+  ) + theme(plot.background = element_rect(fill = "purple"))
+
+
+
+f<-datapoint %>%
+ggplot(aes(x=AXL, y=NGFR)) +
+geom_point(aes(color=Cancer)) + theme_light() +
+labs(title="AXL vs NGFR",
+x="AXL",
+y="Sox10")  + theme(
+  panel.background = element_rect(fill = "lightblue",
+                                colour = "lightblue",
+                                size = 0.5, linetype = "solid"),
+  panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                colour = "white"), 
+  panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                colour = "white")
+  ) + theme(plot.background = element_rect(fill = "purple"))
+
+
+```
+
+---
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3.1, fig.width=6}
+
+plot_grid(a,b,c,d,e,f)
+
+```
+
+---
+
+## BOOTSTRAPPING CORRELATION ESTIMATES FOR CONFIDENCE INTERVALS
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=1.5, fig.width=1.6}
+
+
+#AXL vs Sox10
+
+N = 100
+dataset_cancer%>% na.omit()-> dataset_cancer
+#print(correlation_value_storage[i] <- cor(dataset_cancer$AXL,dataset_cancer$Sox10)^2)
+
+
+correlation_value_storage <- rep(NA,nrow(dataset_cancer))
+#  data_shuffled<- df %>% sample_n(5)
+set.seed(223)
+
+for(i in seq_along(1:N)) {
+
+  data_shuffled <-  sample_n(dataset_cancer,size=10000,replace=TRUE)
+
+
+  correlation_value_storage[i] <- cor(data_shuffled$AXL,data_shuffled$Sox10)^2
+  #print(correlation_value_storage[i])
+}
+bootstraped_data<-correlation_value_storage%>% na.omit()
+table1 <- tibble(values=bootstraped_data)
+a<-ggplot(table1,aes(x=values))+geom_histogram(bins=16,color="blue",fill="green")+labs(title="AXL vs NGFR",
+                                                                                       x="AXL",
+                                                                                       y="Sox10")
+
+
+
+
+
+
+#MiTFg vs  Sox10
+N = 100
+#print(correlation_value_storage[i] <- cor(dataset_cancer$AXL,dataset_cancer$Sox10)^2)
+
+
+correlation_value_storage <- rep(NA,nrow(dataset_cancer))
+#  data_shuffled<- df %>% sample_n(5)
+set.seed(223)
+
+for(i in seq_along(1:N)) {
+
+  data_shuffled <-  sample_n(dataset_cancer,size=10000,replace=TRUE)
+
+
+  correlation_value_storage[i] <- cor(data_shuffled$MiTFg,data_shuffled$Sox10)^2
+  #print(correlation_value_storage[i])
+}
+bootstraped_data<-correlation_value_storage%>% na.omit()
+table2 <- tibble(values=bootstraped_data)
+b<-ggplot(table2,aes(x=values))+geom_histogram(bins=16,color="blue",fill="green")+labs(title="MiTFg vs NGFR",
+                                                                                       x="MiTFg",
+                                                                                       y="Sox10")
+
+
+
+
+
+
+
+
+#NGFR vs Sox10
+N = 100
+#print(correlation_value_storage[i] <- cor(dataset_cancer$AXL,dataset_cancer$Sox10)^2)
+
+
+correlation_value_storage <- rep(NA,nrow(dataset_cancer))
+#  data_shuffled<- df %>% sample_n(5)
+set.seed(223)
+
+for(i in seq_along(1:N)) {
+
+  data_shuffled <-  sample_n(dataset_cancer,size=10000,replace=TRUE)
+
+
+  correlation_value_storage[i] <- cor(data_shuffled$NGFR,data_shuffled$Sox10)^2
+  #print(correlation_value_storage[i])
+}
+bootstraped_data<-correlation_value_storage%>% na.omit()
+table3 <- tibble(values=bootstraped_data)
+ c<-ggplot(table3,aes(x=values))+geom_histogram(bins=16,color="blue",fill="green")+labs(title="NGFR vs Sox10",
+                                                                                       x="NGFR",
+                                                                                       y="Sox10")
+
+
+
+
+#NGFR vs MiTFg
+
+N = 100
+#print(correlation_value_storage[i] <- cor(dataset_cancer$AXL,dataset_cancer$Sox10)^2)
+
+
+correlation_value_storage <- rep(NA,nrow(dataset_cancer))
+#  data_shuffled<- df %>% sample_n(5)
+set.seed(223)
+
+for(i in seq_along(1:N)) {
+
+  data_shuffled <-  sample_n(dataset_cancer,size=10000,replace=TRUE)
+
+
+  correlation_value_storage[i] <- cor(data_shuffled$NGFR,data_shuffled$MiTFg)^2
+  #print(correlation_value_storage[i])
+}
+bootstraped_data<-correlation_value_storage%>% na.omit()
+table4 <- tibble(values=bootstraped_data)
+d<-ggplot(table4,aes(x=values))+geom_histogram(bins=16,color="blue",fill="green")+labs(title="NGFR vs MiTFg",
+                                                                                      x="NGFR",
+                                                                                      y="MiTFg")
+
+
+
+
+#AXL vs MiTFg
+N = 100
+#print(correlation_value_storage[i] <- cor(dataset_cancer$AXL,dataset_cancer$Sox10)^2)
+
+
+correlation_value_storage <- rep(NA,nrow(dataset_cancer))
+#  data_shuffled<- df %>% sample_n(5)
+set.seed(223)
+
+for(i in seq_along(1:N)) {
+
+  data_shuffled <-  sample_n(dataset_cancer,size=10000,replace=TRUE)
+
+
+  correlation_value_storage[i] <- cor(data_shuffled$AXL,data_shuffled$MiTFg)^2
+  #print(correlation_value_storage[i])
+}
+bootstraped_data<-correlation_value_storage%>% na.omit()
+table5<- tibble(values=bootstraped_data)
+e<-ggplot(table5,aes(x=values))+geom_histogram(bins=16,color="blue",fill="green")+labs(title="AXL vs MiTFg",
+                                                                                      x="AXL",
+                                                                                      y="MiTFg")
+
+
+
+
+
+
+#AXL  vs y=NGFR
+N = 100
+#print(correlation_value_storage[i] <- cor(dataset_cancer$AXL,dataset_cancer$Sox10)^2)
+
+
+correlation_value_storage <- rep(NA,nrow(dataset_cancer))
+#  data_shuffled<- df %>% sample_n(5)
+set.seed(223)
+
+for(i in seq_along(1:N)) {
+
+  data_shuffled <-  sample_n(dataset_cancer,size=10000,replace=TRUE)
+
+
+  correlation_value_storage[i] <- cor(data_shuffled$AXL,data_shuffled$NGFR)^2
+  #print(correlation_value_storage[i])
+}
+bootstraped_data<-correlation_value_storage%>% na.omit()
+table6 <- tibble(values=bootstraped_data)
+f<-ggplot(table6,aes(x=values))+geom_histogram(bins=16,color="blue",fill="green")+labs(title="AXL vs NGFR",
+                                                                                      x="AXL",
+                                                                                      y="NGFR")
+
+
+
+a+theme(axis.text.x=element_text(size=5))
+b+theme(axis.text.x=element_text(size=5))
+c+theme(axis.text.x=element_text(size=5))
+d+theme(axis.text.x=element_text(size=5))
+e+theme(axis.text.x=element_text(size=5))
+f+theme(axis.text.x=element_text(size=5))
+
+
+plot_grid(a,b,c,d,e,f)
+
+
+```
+
+## Main Results
+
+### Our main results were...
+
+From the classification trees, it can be concluded that;\
+\vspace{0.3cm}
+-  If we know the level of the TFs Phospho_Fra1, Fra2, Phospho_Erk1, Phospho_ATF2, ATF6, Ki_67, c_Fos, ATF4, Phospho_S6, and ATF3, then we can tell if each protein level is HIGH or LOW. From that, we combine our results and figure out if the cell is cancerous or not.\
+\vspace{0.5cm}
+From the two-sample hypothesis tests, it can be concluded that:\
+\vspace{0.3cm}
+- There is a significant change overtime for the AXL, NGFR and MiTFg proteins in the VEM and VEM+TRAM drug.\
+- In the VEM drug, AXL decreases overtime, NGFR increases overtime and MiTFg increases overtime.\
+- In the VEM+TRAM drug, AXL decreases overtime, NGFR increases overtime and MiTFg decreases overtime.\
+- We fail to reject the null hypothesis for Sox10.\
+\vspace{0.5cm}
+From the correlation estimation and bootstrapping, it can be concluded that;\
+- There exists a weak correlation between different proteins which may force us to reassess the importance of the relative quantities of proteins.\
+
+
+## Conclusion
+
+### We have concluded that...
+
+- In the presence of the VEM+TRAM drug, MiTFg levels reduce. This is a significant finding since we know cells are cancerous when they have high MiTFg, high NGFR, low Sox10 and low AXL.\
+- Although Sox10 is relatively unchanged overtime, AXL further decreases and NGFR further increases, the significant change of one protein away from the regular cancerous protein configuration is promising and provides a scientific basis to further research how proteins respond to the Vem and Tram drug.\
+- Furthermore, given the weak correlation between key phenotypes, the findings from this investigation provide a basis for further scientific investigation into how phenotypes and various drugs may reduce the development of melanocytic cells.
+
+## Considerations
+
+### Some considerations include;
+
+- Each experiment was made under the condition that everything else remained constant except the variables under consideration.\
+- Sox10 has a noticable change in protein levels at the 2h timepoint which, due to the limitations of linear regression, could not be aptly included in this investigation.\
+
+### Acknowledgements
+
+All code and functions used during this investigation come from the following R libraries; tidyverse, rpart, partykit and cowplot.
